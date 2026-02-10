@@ -1,0 +1,23 @@
+.conferencia-container {
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  animation: fadeIn 0.25s ease-in-out;
+}
+
+.input-disabled-custom .MuiInputBase-input.Mui-disabled {
+  -webkit-text-fill-color: #334155 !important;
+  background-color: #f8fafc;
+  font-weight: 500;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
