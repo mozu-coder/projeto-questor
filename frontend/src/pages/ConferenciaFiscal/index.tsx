@@ -12,6 +12,10 @@ import ObisidianTable from "../../components/ui/ObisidianTable";
 import ObisidianPageHeader from "../../components/ui/ObisidianPageHeader";
 import ObisidianResultCard from "../../components/ui/ObisidianResultCard";
 import ObisidianCardHeader from "../../components/ui/ObisidianCardHeader";
+import ObisidianToastContainer, {
+  type Toast,
+} from "../../components/ui/ObisidianToastContainer";
+import { type ToastType } from "../../components/ui/ObisidianToast";
 
 import "./styles.css";
 
@@ -20,38 +24,46 @@ const API = "http://localhost:3000";
 interface INotaConferida {
   numeroNf: number;
   tipoLancamento: "ENTRADA" | "SAIDA";
+  cfop: number;
   chaveFiscal: number;
-  chaveContabil: number;
+  chaveContabil: number | null;
   valorFiscal: number;
   valorContabil: number;
-  contaDebito: number;
-  contaCredito: number;
+  contaDebito: number | null;
+  contaCredito: number | null;
 }
 
 interface IDivergencia {
   tipo: string;
   numeroNf: number;
   tipoLancamento: "ENTRADA" | "SAIDA";
+  cfop: number;
   chaveFiscal?: number;
   valorFiscal?: number;
   chaveContabil?: number;
   valorContabil?: number;
   contaDebito?: number;
   contaCredito?: number;
+  contaDebitoEsperada?: number;
+  contaCreditoEsperada?: number;
   descricao: string;
 }
 
 interface IResultadoConferencia {
   totalEntradas: number;
   totalSaidas: number;
-  entradasConferidas: number;
-  saidasConferidas: number;
+  totalCFOPsEntrada: number;
+  totalCFOPsSaida: number;
+  cfopsEntradasConferidos: number;
+  cfopsSaidasConferidos: number;
   divergenciasEncontradas: number;
   divergencias: IDivergencia[];
   notasCorretas: INotaConferida[];
 }
 
 const ConferenciaFiscal = () => {
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
   const [codEmpresa, setCodEmpresa] = useState("");
   const [nomeEmpresa, setNomeEmpresa] = useState("");
   const [codPlano, setCodPlano] = useState("");
@@ -77,11 +89,29 @@ const ConferenciaFiscal = () => {
   const [filtros, setFiltros] = useState<Record<string, string>>({});
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
+  /**
+   * Adiciona um toast na fila
+   */
+  const showToast = (message: string, type: ToastType) => {
+    const id = `toast-${Date.now()}-${Math.random()}`;
+    setToasts((prev) => [...prev, { id, message, type }]);
+  };
+
+  /**
+   * Remove um toast da fila
+   */
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  };
+
   useEffect(() => {
     carregarEmpresas();
     carregarPlanos();
   }, []);
 
+  /**
+   * Formata string para padrão DD/MM/AAAA
+   */
   const formatarData = (valor: string) => {
     const v = valor.replace(/\D/g, "");
     if (v.length > 4)
@@ -90,11 +120,30 @@ const ConferenciaFiscal = () => {
     return v;
   };
 
+  /**
+   * Converte data DD/MM/AAAA para AAAA-MM-DD
+   */
   const converterDataParaISO = (data: string) => {
     const [dia, mes, ano] = data.split("/");
     return `${ano}-${mes}-${dia}`;
   };
 
+  /**
+   * Valida se a data está no formato correto
+   */
+  const validarData = (data: string): boolean => {
+    if (data.length !== 10) return false;
+    const [dia, mes, ano] = data.split("/").map(Number);
+    if (!dia || !mes || !ano) return false;
+    if (mes < 1 || mes > 12) return false;
+    if (dia < 1 || dia > 31) return false;
+    if (ano < 1900 || ano > 2100) return false;
+    return true;
+  };
+
+  /**
+   * Carrega lista de empresas da API
+   */
   const carregarEmpresas = async () => {
     try {
       const response = await axios.get(`${API}/empresas`);
@@ -106,51 +155,114 @@ const ConferenciaFiscal = () => {
         ...item,
       }));
       setListaEmpresas(dadosNormalizados);
-    } catch (error) {
-      console.error("Erro ao buscar empresas:", error);
+    } catch (err) {
+      console.error("Erro ao buscar empresas:", err);
+      showToast("Erro ao carregar lista de empresas", "error");
     }
   };
 
+  /**
+   * Carrega lista de planos de contabilização
+   */
   const carregarPlanos = async () => {
     try {
       const response = await axios.get(`${API}/planos`);
       setListaPlanos(response.data);
-    } catch (error) {
-      console.error("Erro ao buscar planos:", error);
+    } catch (err) {
+      console.error("Erro ao buscar planos:", err);
+      showToast("Erro ao carregar planos de contabilização", "error");
     }
   };
 
+  /**
+   * Abre modal de seleção
+   */
   const handleOpenModal = (tipo: "empresa" | "plano") => {
     setModalType(tipo);
     setModalOpen(true);
   };
 
+  /**
+   * Seleciona item do modal
+   */
   const handleSelecionarItem = (row: any) => {
     if (modalType === "empresa") {
       setCodEmpresa(String(row.CODIGO || ""));
       setNomeEmpresa(row.NOME || "");
+      showToast(`Empresa ${row.NOME} selecionada`, "info");
     } else {
       setCodPlano(String(row.id || ""));
       setDescPlano(row.nome || "");
+      showToast(`Plano ${row.nome} selecionado`, "info");
     }
     setModalOpen(false);
   };
 
+  /**
+   * Busca empresa por código digitado
+   */
   const handleBuscaManualEmpresa = (val: string) => {
     setCodEmpresa(val);
     const found = listaEmpresas.find((e) => String(e.CODIGO) === val);
-    setNomeEmpresa(found ? found.NOME : "");
+    if (found) {
+      setNomeEmpresa(found.NOME);
+    } else {
+      setNomeEmpresa("");
+    }
   };
 
+  /**
+   * Busca plano por código digitado
+   */
   const handleBuscaManualPlano = (val: string) => {
     setCodPlano(val);
     const found = listaPlanos.find((p) => String(p.id) === val);
-    setDescPlano(found ? found.nome : "");
+    if (found) {
+      setDescPlano(found.nome);
+    } else {
+      setDescPlano("");
+    }
   };
 
+  /**
+   * Executa o processamento da conferência fiscal
+   */
   const handleProcessar = async () => {
-    if (!codEmpresa || !dataInicio || !dataFim || !codPlano) {
-      alert("Preencha todos os campos!");
+    if (!codEmpresa) {
+      showToast("Selecione uma empresa", "warning");
+      return;
+    }
+
+    if (!dataInicio) {
+      showToast("Informe a data inicial", "warning");
+      return;
+    }
+
+    if (!dataFim) {
+      showToast("Informe a data final", "warning");
+      return;
+    }
+
+    if (!codPlano) {
+      showToast("Selecione um plano de contabilização", "warning");
+      return;
+    }
+
+    if (!validarData(dataInicio)) {
+      showToast("Data inicial inválida", "error");
+      return;
+    }
+
+    if (!validarData(dataFim)) {
+      showToast("Data final inválida", "error");
+      return;
+    }
+
+    const dataInicioISO = converterDataParaISO(dataInicio);
+    const dataFimISO = converterDataParaISO(dataFim);
+
+    if (dataInicioISO > dataFimISO) {
+      showToast("Data inicial não pode ser maior que data final", "error");
       return;
     }
 
@@ -160,26 +272,44 @@ const ConferenciaFiscal = () => {
     try {
       const response = await axios.post(`${API}/conferencia-fiscal/executar`, {
         codigoEmpresa: parseInt(codEmpresa),
-        dataInicio: converterDataParaISO(dataInicio),
-        dataFim: converterDataParaISO(dataFim),
+        dataInicio: dataInicioISO,
+        dataFim: dataFimISO,
         planoContabilizacaoId: parseInt(codPlano),
       });
 
       setResultado(response.data);
-    } catch (error) {
-      console.error("Erro ao processar conferência:", error);
-      alert("Erro ao processar conferência fiscal!");
+
+      const totalDivergencias = response.data.divergenciasEncontradas;
+      if (totalDivergencias === 0) {
+        showToast("Conferência concluída sem divergências!", "success");
+      } else {
+        showToast(
+          `Conferência concluída com ${totalDivergencias} divergência${totalDivergencias !== 1 ? "s" : ""}`,
+          "warning",
+        );
+      }
+    } catch (err: any) {
+      console.error("Erro ao processar conferência:", err);
+      const mensagem =
+        err.response?.data?.message || "Erro ao processar conferência fiscal";
+      showToast(mensagem, "error");
     } finally {
       setProcessando(false);
     }
   };
 
+  /**
+   * Abre modal de detalhes ao clicar no card
+   */
   const handleClickCard = (tipo: "ENTRADA" | "SAIDA") => {
     setTipoDetalhes(tipo);
     setStatusDetalhes("corretas");
     setModalDetalhesOpen(true);
   };
 
+  /**
+   * Obtém dados filtrados para exibição na tabela
+   */
   const obterDadosFiltrados = () => {
     if (!resultado || !tipoDetalhes) return [];
 
@@ -190,11 +320,12 @@ const ConferenciaFiscal = () => {
         .filter((n) => n.tipoLancamento === tipoDetalhes)
         .map((n) => ({
           numeroNf: n.numeroNf,
+          cfop: n.cfop,
           chaveFiscal: n.chaveFiscal,
-          chaveContabil: n.chaveContabil,
+          chaveContabil: n.chaveContabil || "—",
           valor: `R$ ${n.valorFiscal.toFixed(2)}`,
-          contaDebito: n.contaDebito,
-          contaCredito: n.contaCredito,
+          contaDebito: n.contaDebito || "—",
+          contaCredito: n.contaCredito || "—",
           status: "OK",
         }));
     } else {
@@ -205,24 +336,32 @@ const ConferenciaFiscal = () => {
           const valorContabil = d.valorContabil || 0;
           const diferenca = Math.abs(valorFiscal - valorContabil);
 
+          let tipoFormatado = "Desconhecido";
+          if (d.tipo === "VALOR_DIVERGENTE") tipoFormatado = "Valor Divergente";
+          else if (d.tipo === "CONTA_INCORRETA")
+            tipoFormatado = "Conta Incorreta";
+          else if (d.tipo === "NAO_ENCONTRADO_CONTABIL")
+            tipoFormatado = "Não Encontrado no Contábil";
+          else if (d.tipo === "CFOP_NAO_CONFIGURADO")
+            tipoFormatado = "CFOP Não Configurado";
+          else if (d.tipo === "NAO_ENCONTRADO_FISCAL")
+            tipoFormatado = "CFOP Não Encontrado no Plano";
+
           return {
             numeroNf: d.numeroNf,
-            tipo:
-              d.tipo === "VALOR_DIVERGENTE"
-                ? "Valor Divergente"
-                : "Não Encontrado no Contábil",
-            valorFiscal: d.valorFiscal ? `R$ ${d.valorFiscal.toFixed(2)}` : "-",
+            cfop: d.cfop,
+            tipo: tipoFormatado,
+            valorFiscal: d.valorFiscal ? `R$ ${d.valorFiscal.toFixed(2)}` : "—",
             valorContabil: d.valorContabil
               ? `R$ ${d.valorContabil.toFixed(2)}`
-              : "-",
-            diferenca: diferenca > 0 ? `R$ ${diferenca.toFixed(2)}` : "-",
-            contaDebito: d.contaDebito || "-",
-            contaCredito: d.contaCredito || "-",
+              : "—",
+            diferenca: diferenca > 0 ? `R$ ${diferenca.toFixed(2)}` : "—",
+            contaDebito: d.contaDebito || "—",
+            contaCredito: d.contaCredito || "—",
           };
         });
     }
 
-    // Aplicar filtros por coluna
     Object.entries(filtros).forEach(([coluna, valor]) => {
       if (valor) {
         dados = dados.filter((d) =>
@@ -234,10 +373,16 @@ const ConferenciaFiscal = () => {
     return dados;
   };
 
+  /**
+   * Limpa todos os filtros ativos
+   */
   const handleLimparFiltros = () => {
     setFiltros({});
   };
 
+  /**
+   * Atualiza valor de um filtro específico
+   */
   const handleFiltroChange = useCallback((coluna: string, valor: string) => {
     setFiltros((prev) => ({
       ...prev,
@@ -245,6 +390,9 @@ const ConferenciaFiscal = () => {
     }));
   }, []);
 
+  /**
+   * Componente de input para filtro de coluna
+   */
   const FiltroColuna = useCallback(
     ({ coluna, valor, onChange }: any) => (
       <Box sx={{ mt: 0.5, mb: 0.5 }}>
@@ -279,14 +427,16 @@ const ConferenciaFiscal = () => {
       : 0;
 
   const entradasOk =
-    resultado && resultado.entradasConferidas === resultado.totalEntradas;
+    resultado &&
+    resultado.cfopsEntradasConferidos === resultado.totalCFOPsEntrada;
   const saidasOk =
-    resultado && resultado.saidasConferidas === resultado.totalSaidas;
+    resultado && resultado.cfopsSaidasConferidos === resultado.totalCFOPsSaida;
 
   const colunas =
     statusDetalhes === "corretas"
       ? [
           { id: "numeroNf", label: "Nº NF", minWidth: 80 },
+          { id: "cfop", label: "CFOP", minWidth: 80 },
           { id: "chaveFiscal", label: "Chave Fiscal", minWidth: 100 },
           { id: "chaveContabil", label: "Chave Contábil", minWidth: 100 },
           { id: "valor", label: "Valor", minWidth: 100 },
@@ -296,7 +446,8 @@ const ConferenciaFiscal = () => {
         ]
       : [
           { id: "numeroNf", label: "Nº NF", minWidth: 80 },
-          { id: "tipo", label: "Tipo Erro", minWidth: 150 },
+          { id: "cfop", label: "CFOP", minWidth: 80 },
+          { id: "tipo", label: "Tipo Erro", minWidth: 180 },
           {
             id: "valorFiscal",
             label: "Valor Fiscal",
@@ -321,6 +472,8 @@ const ConferenciaFiscal = () => {
 
   return (
     <Box className="conferencia-container">
+      <ObisidianToastContainer toasts={toasts} onRemove={removeToast} />
+
       <ObisidianPageHeader
         title="Conferência Fiscal"
         subtitle="Selecione os parâmetros para iniciar a auditoria."
@@ -436,8 +589,8 @@ const ConferenciaFiscal = () => {
             <ObisidianResultCard
               title="ENTRADAS"
               status={entradasOk ? "success" : "error"}
-              total={resultado.totalEntradas}
-              conferidos={resultado.entradasConferidas}
+              total={resultado.totalCFOPsEntrada}
+              conferidos={resultado.cfopsEntradasConferidos}
               onClick={() => handleClickCard("ENTRADA")}
             />
           </Grid>
@@ -446,8 +599,8 @@ const ConferenciaFiscal = () => {
             <ObisidianResultCard
               title="SAÍDAS"
               status={saidasOk ? "success" : "error"}
-              total={resultado.totalSaidas}
-              conferidos={resultado.saidasConferidas}
+              total={resultado.totalCFOPsSaida}
+              conferidos={resultado.cfopsSaidasConferidos}
               onClick={() => handleClickCard("SAIDA")}
             />
           </Grid>
