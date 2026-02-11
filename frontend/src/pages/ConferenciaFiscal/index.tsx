@@ -1,8 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { Box, Typography, IconButton } from "@mui/material";
 import Grid from "@mui/material/Grid";
-import { Search, CalendarMonth, PlayArrow, ListAlt } from "@mui/icons-material";
+import {
+  Search,
+  CalendarMonth,
+  PlayArrow,
+  ListAlt,
+  FileDownload,
+} from "@mui/icons-material";
 import axios from "axios";
+import * as XLSX from "xlsx";
 
 import ObisidianInput from "../../components/ui/ObisidianInput";
 import ObisidianButton from "../../components/ui/ObisidianButton";
@@ -12,6 +19,7 @@ import ObisidianTable from "../../components/ui/ObisidianTable";
 import ObisidianPageHeader from "../../components/ui/ObisidianPageHeader";
 import ObisidianResultCard from "../../components/ui/ObisidianResultCard";
 import ObisidianCardHeader from "../../components/ui/ObisidianCardHeader";
+import ObisidianCheckbox from "../../components/ui/ObisidianCheckbox";
 import ObisidianToastContainer, {
   type Toast,
 } from "../../components/ui/ObisidianToastContainer";
@@ -89,17 +97,19 @@ const ConferenciaFiscal = () => {
   const [filtros, setFiltros] = useState<Record<string, string>>({});
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
-  /**
-   * Adiciona um toast na fila
-   */
+  const [modalExportOpen, setModalExportOpen] = useState(false);
+  const [exportOpcoes, setExportOpcoes] = useState({
+    entradasCorretas: true,
+    entradasDivergencias: true,
+    saidasCorretas: true,
+    saidasDivergencias: true,
+  });
+
   const showToast = (message: string, type: ToastType) => {
     const id = `toast-${Date.now()}-${Math.random()}`;
     setToasts((prev) => [...prev, { id, message, type }]);
   };
 
-  /**
-   * Remove um toast da fila
-   */
   const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
@@ -109,9 +119,6 @@ const ConferenciaFiscal = () => {
     carregarPlanos();
   }, []);
 
-  /**
-   * Formata string para padrão DD/MM/AAAA
-   */
   const formatarData = (valor: string) => {
     const v = valor.replace(/\D/g, "");
     if (v.length > 4)
@@ -120,17 +127,11 @@ const ConferenciaFiscal = () => {
     return v;
   };
 
-  /**
-   * Converte data DD/MM/AAAA para AAAA-MM-DD
-   */
   const converterDataParaISO = (data: string) => {
     const [dia, mes, ano] = data.split("/");
     return `${ano}-${mes}-${dia}`;
   };
 
-  /**
-   * Valida se a data está no formato correto
-   */
   const validarData = (data: string): boolean => {
     if (data.length !== 10) return false;
     const [dia, mes, ano] = data.split("/").map(Number);
@@ -141,9 +142,6 @@ const ConferenciaFiscal = () => {
     return true;
   };
 
-  /**
-   * Carrega lista de empresas da API
-   */
   const carregarEmpresas = async () => {
     try {
       const response = await axios.get(`${API}/empresas`);
@@ -161,9 +159,6 @@ const ConferenciaFiscal = () => {
     }
   };
 
-  /**
-   * Carrega lista de planos de contabilização
-   */
   const carregarPlanos = async () => {
     try {
       const response = await axios.get(`${API}/planos`);
@@ -174,17 +169,11 @@ const ConferenciaFiscal = () => {
     }
   };
 
-  /**
-   * Abre modal de seleção
-   */
   const handleOpenModal = (tipo: "empresa" | "plano") => {
     setModalType(tipo);
     setModalOpen(true);
   };
 
-  /**
-   * Seleciona item do modal
-   */
   const handleSelecionarItem = (row: any) => {
     if (modalType === "empresa") {
       setCodEmpresa(String(row.CODIGO || ""));
@@ -198,9 +187,6 @@ const ConferenciaFiscal = () => {
     setModalOpen(false);
   };
 
-  /**
-   * Busca empresa por código digitado
-   */
   const handleBuscaManualEmpresa = (val: string) => {
     setCodEmpresa(val);
     const found = listaEmpresas.find((e) => String(e.CODIGO) === val);
@@ -211,9 +197,6 @@ const ConferenciaFiscal = () => {
     }
   };
 
-  /**
-   * Busca plano por código digitado
-   */
   const handleBuscaManualPlano = (val: string) => {
     setCodPlano(val);
     const found = listaPlanos.find((p) => String(p.id) === val);
@@ -224,35 +207,27 @@ const ConferenciaFiscal = () => {
     }
   };
 
-  /**
-   * Executa o processamento da conferência fiscal
-   */
   const handleProcessar = async () => {
     if (!codEmpresa) {
       showToast("Selecione uma empresa", "warning");
       return;
     }
-
     if (!dataInicio) {
       showToast("Informe a data inicial", "warning");
       return;
     }
-
     if (!dataFim) {
       showToast("Informe a data final", "warning");
       return;
     }
-
     if (!codPlano) {
       showToast("Selecione um plano de contabilização", "warning");
       return;
     }
-
     if (!validarData(dataInicio)) {
       showToast("Data inicial inválida", "error");
       return;
     }
-
     if (!validarData(dataFim)) {
       showToast("Data final inválida", "error");
       return;
@@ -298,18 +273,12 @@ const ConferenciaFiscal = () => {
     }
   };
 
-  /**
-   * Abre modal de detalhes ao clicar no card
-   */
   const handleClickCard = (tipo: "ENTRADA" | "SAIDA") => {
     setTipoDetalhes(tipo);
     setStatusDetalhes("corretas");
     setModalDetalhesOpen(true);
   };
 
-  /**
-   * Obtém dados filtrados para exibição na tabela
-   */
   const obterDadosFiltrados = () => {
     if (!resultado || !tipoDetalhes) return [];
 
@@ -373,26 +342,139 @@ const ConferenciaFiscal = () => {
     return dados;
   };
 
-  /**
-   * Limpa todos os filtros ativos
-   */
   const handleLimparFiltros = () => {
     setFiltros({});
   };
 
-  /**
-   * Atualiza valor de um filtro específico
-   */
   const handleFiltroChange = useCallback((coluna: string, valor: string) => {
-    setFiltros((prev) => ({
-      ...prev,
-      [coluna]: valor,
-    }));
+    setFiltros((prev) => ({ ...prev, [coluna]: valor }));
   }, []);
 
   /**
-   * Componente de input para filtro de coluna
+   * Exporta os dados para um arquivo Excel com abas selecionadas
    */
+  const handleExportar = () => {
+    if (!resultado) return;
+
+    const nenhumaOpcao =
+      !exportOpcoes.entradasCorretas &&
+      !exportOpcoes.entradasDivergencias &&
+      !exportOpcoes.saidasCorretas &&
+      !exportOpcoes.saidasDivergencias;
+
+    if (nenhumaOpcao) {
+      showToast("Selecione ao menos uma opção para exportar", "warning");
+      return;
+    }
+
+    const wb = XLSX.utils.book_new();
+
+    const colunasCorretas = [
+      "Nº NF",
+      "CFOP",
+      "Chave Fiscal",
+      "Chave Contábil",
+      "Valor Fiscal",
+      "Conta Débito",
+      "Conta Crédito",
+      "Status",
+    ];
+
+    const colunasDivergencias = [
+      "Nº NF",
+      "CFOP",
+      "Tipo Erro",
+      "Valor Fiscal",
+      "Valor Contábil",
+      "Diferença",
+      "Conta Débito",
+      "Conta Crédito",
+    ];
+
+    const formatarTipo = (tipo: string) => {
+      if (tipo === "VALOR_DIVERGENTE") return "Valor Divergente";
+      if (tipo === "CONTA_INCORRETA") return "Conta Incorreta";
+      if (tipo === "NAO_ENCONTRADO_CONTABIL")
+        return "Não Encontrado no Contábil";
+      if (tipo === "CFOP_NAO_CONFIGURADO") return "CFOP Não Configurado";
+      if (tipo === "NAO_ENCONTRADO_FISCAL")
+        return "CFOP Não Encontrado no Plano";
+      return tipo;
+    };
+
+    const formatarCorretas = (tipo: "ENTRADA" | "SAIDA") =>
+      resultado.notasCorretas
+        .filter((n) => n.tipoLancamento === tipo)
+        .map((n) => ({
+          "Nº NF": n.numeroNf,
+          CFOP: n.cfop,
+          "Chave Fiscal": n.chaveFiscal,
+          "Chave Contábil": n.chaveContabil || "",
+          "Valor Fiscal": n.valorFiscal,
+          "Conta Débito": n.contaDebito || "",
+          "Conta Crédito": n.contaCredito || "",
+          Status: "OK",
+        }));
+
+    const formatarDivergencias = (tipo: "ENTRADA" | "SAIDA") =>
+      resultado.divergencias
+        .filter((d) => d.tipoLancamento === tipo)
+        .map((d) => {
+          const valorFiscal = d.valorFiscal || 0;
+          const valorContabil = d.valorContabil || 0;
+          return {
+            "Nº NF": d.numeroNf,
+            CFOP: d.cfop,
+            "Tipo Erro": formatarTipo(d.tipo),
+            "Valor Fiscal": valorFiscal,
+            "Valor Contábil": valorContabil || "",
+            Diferença: Math.abs(valorFiscal - valorContabil),
+            "Conta Débito": d.contaDebito || "",
+            "Conta Crédito": d.contaCredito || "",
+          };
+        });
+
+    const adicionarAba = (nome: string, dados: any[], colunas: string[]) => {
+      const ws = XLSX.utils.json_to_sheet(dados.length > 0 ? dados : [{}], {
+        header: colunas,
+      });
+      ws["!cols"] = colunas.map((col) => ({ wch: Math.max(col.length, 16) }));
+      XLSX.utils.book_append_sheet(wb, ws, nome);
+    };
+
+    if (exportOpcoes.entradasCorretas)
+      adicionarAba(
+        "ENTRADAS (CORRETAS)",
+        formatarCorretas("ENTRADA"),
+        colunasCorretas,
+      );
+
+    if (exportOpcoes.entradasDivergencias)
+      adicionarAba(
+        "ENTRADAS (DIVERGÊNCIAS)",
+        formatarDivergencias("ENTRADA"),
+        colunasDivergencias,
+      );
+
+    if (exportOpcoes.saidasCorretas)
+      adicionarAba(
+        "SAÍDAS (CORRETAS)",
+        formatarCorretas("SAIDA"),
+        colunasCorretas,
+      );
+
+    if (exportOpcoes.saidasDivergencias)
+      adicionarAba(
+        "SAÍDAS (DIVERGÊNCIAS)",
+        formatarDivergencias("SAIDA"),
+        colunasDivergencias,
+      );
+
+    XLSX.writeFile(wb, "CONFERENCIA-FISCAL.xlsx");
+    setModalExportOpen(false);
+    showToast("Arquivo exportado com sucesso!", "success");
+  };
+
   const FiltroColuna = useCallback(
     ({ coluna, valor, onChange }: any) => (
       <Box sx={{ mt: 0.5, mb: 0.5 }}>
@@ -403,10 +485,7 @@ const ConferenciaFiscal = () => {
           noMargin
           size="small"
           sx={{
-            "& .MuiOutlinedInput-root": {
-              height: 28,
-              fontSize: "0.7rem",
-            },
+            "& .MuiOutlinedInput-root": { height: 28, fontSize: "0.7rem" },
           }}
         />
       </Box>
@@ -469,6 +548,20 @@ const ConferenciaFiscal = () => {
           { id: "contaDebito", label: "Conta Débito", minWidth: 90 },
           { id: "contaCredito", label: "Conta Crédito", minWidth: 90 },
         ];
+
+  // Contadores para o modal de exportação
+  const contEntradasCorretas =
+    resultado?.notasCorretas.filter((n) => n.tipoLancamento === "ENTRADA")
+      .length || 0;
+  const contEntradasDiverg =
+    resultado?.divergencias.filter((d) => d.tipoLancamento === "ENTRADA")
+      .length || 0;
+  const contSaidasCorretas =
+    resultado?.notasCorretas.filter((n) => n.tipoLancamento === "SAIDA")
+      .length || 0;
+  const contSaidasDiverg =
+    resultado?.divergencias.filter((d) => d.tipoLancamento === "SAIDA")
+      .length || 0;
 
   return (
     <Box className="conferencia-container">
@@ -558,7 +651,7 @@ const ConferenciaFiscal = () => {
               }
             />
           </Grid>
-          <Grid size={{ xs: 12, md: 6.5 }}>
+          <Grid size={{ xs: 12, md: 5.5 }}>
             <ObisidianInput
               label="Nome do Plano"
               placeholder="Selecione o plano..."
@@ -580,6 +673,19 @@ const ConferenciaFiscal = () => {
               </ObisidianButton>
             </Box>
           </Grid>
+          <Grid size={{ xs: 12, md: 1 }}>
+            <Box sx={{ mb: "8px" }}>
+              <ObisidianButton
+                variantType="outline"
+                fullWidth
+                startIcon={<FileDownload sx={{ fontSize: 16 }} />}
+                onClick={() => setModalExportOpen(true)}
+                disabled={!resultado}
+              >
+                Exportar
+              </ObisidianButton>
+            </Box>
+          </Grid>
         </Grid>
       </ObisidianCard>
 
@@ -594,7 +700,6 @@ const ConferenciaFiscal = () => {
               onClick={() => handleClickCard("ENTRADA")}
             />
           </Grid>
-
           <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
             <ObisidianResultCard
               title="SAÍDAS"
@@ -627,6 +732,7 @@ const ConferenciaFiscal = () => {
         </ObisidianCard>
       )}
 
+      {/* Modal Seleção Empresa/Plano */}
       <ObisidianModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -664,6 +770,7 @@ const ConferenciaFiscal = () => {
         )}
       </ObisidianModal>
 
+      {/* Modal Detalhes */}
       <ObisidianModal
         open={modalDetalhesOpen}
         onClose={() => {
@@ -829,6 +936,70 @@ const ConferenciaFiscal = () => {
             <ObisidianTable columns={colunas} rows={dadosFiltrados} />
           </Box>
         </ObisidianCard>
+      </ObisidianModal>
+
+      {/* Modal Exportação */}
+      <ObisidianModal
+        open={modalExportOpen}
+        onClose={() => setModalExportOpen(false)}
+        title="Exportar para Excel"
+        maxWidth="xs"
+        actions={
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <ObisidianButton
+              variantType="ghost"
+              onClick={() => setModalExportOpen(false)}
+            >
+              Cancelar
+            </ObisidianButton>
+            <ObisidianButton
+              variantType="primary"
+              startIcon={<FileDownload sx={{ fontSize: 16 }} />}
+              onClick={handleExportar}
+            >
+              Exportar
+            </ObisidianButton>
+          </Box>
+        }
+      >
+        <Typography sx={{ fontSize: "0.75rem", color: "#64748b", mb: 1.5 }}>
+          Selecione as abas que deseja incluir no arquivo:
+        </Typography>
+
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.8 }}>
+          <ObisidianCheckbox
+            label="Entradas Corretas"
+            sublabel={`${contEntradasCorretas} registro${contEntradasCorretas !== 1 ? "s" : ""}`}
+            checked={exportOpcoes.entradasCorretas}
+            onChange={(v) =>
+              setExportOpcoes((p) => ({ ...p, entradasCorretas: v }))
+            }
+          />
+          <ObisidianCheckbox
+            label="Entradas com Divergências"
+            sublabel={`${contEntradasDiverg} registro${contEntradasDiverg !== 1 ? "s" : ""}`}
+            checked={exportOpcoes.entradasDivergencias}
+            onChange={(v) =>
+              setExportOpcoes((p) => ({ ...p, entradasDivergencias: v }))
+            }
+          />
+          <ObisidianCheckbox
+            label="Saídas Corretas"
+            sublabel={`${contSaidasCorretas} registro${contSaidasCorretas !== 1 ? "s" : ""}`}
+            checked={exportOpcoes.saidasCorretas}
+            onChange={(v) =>
+              setExportOpcoes((p) => ({ ...p, saidasCorretas: v }))
+            }
+          />
+          <ObisidianCheckbox
+            label="Saídas com Divergências"
+            sublabel={`${contSaidasDiverg} registro${contSaidasDiverg !== 1 ? "s" : ""}`}
+            checked={exportOpcoes.saidasDivergencias}
+            onChange={(v) =>
+              setExportOpcoes((p) => ({ ...p, saidasDivergencias: v }))
+            }
+          />
+        </Box>
       </ObisidianModal>
     </Box>
   );

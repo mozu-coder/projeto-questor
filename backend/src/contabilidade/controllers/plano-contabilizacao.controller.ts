@@ -14,8 +14,6 @@ import { PlanoContabilizacaoService } from '../services/plano-contabilizacao.ser
 export class PlanoContabilizacaoController {
   constructor(private readonly planoService: PlanoContabilizacaoService) {}
 
-  // ── PLANOS ──
-
   @Get()
   async listar() {
     return this.planoService.listarPlanos();
@@ -45,8 +43,6 @@ export class PlanoContabilizacaoController {
     return { message: 'Plano excluído' };
   }
 
-  // ── ITENS ──
-
   @Get(':planoId/itens')
   async listarItens(@Param('planoId', ParseIntPipe) planoId: number) {
     return this.planoService.listarItens(planoId);
@@ -55,26 +51,72 @@ export class PlanoContabilizacaoController {
   @Post(':planoId/itens')
   async criarItem(
     @Param('planoId', ParseIntPipe) planoId: number,
-    @Body() body: { cfop: string; contaCredito: string; contaDebito: string },
+    @Body()
+    body: {
+      cfop: string;
+      contaCredito?: string | null;
+      contaDebito?: string | null;
+      contabiliza?: boolean;
+      retido?: boolean;
+      contaInss?: string | null;
+      contaIssqn?: string | null;
+      contaIrpj?: string | null;
+      contaCsll?: string | null;
+      contaIrrf?: string | null;
+      contaPis?: string | null;
+      contaCofins?: string | null;
+    },
   ) {
     return this.planoService.criarItem(
       planoId,
       body.cfop,
-      body.contaCredito,
-      body.contaDebito,
+      body.contaCredito || null,
+      body.contaDebito || null,
+      body.contabiliza ?? true,
+      body.retido ?? false,
+      body.contaInss || null,
+      body.contaIssqn || null,
+      body.contaIrpj || null,
+      body.contaCsll || null,
+      body.contaIrrf || null,
+      body.contaPis || null,
+      body.contaCofins || null,
     );
   }
 
   @Put('itens/:id')
   async atualizarItem(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { cfop: string; contaCredito: string; contaDebito: string },
+    @Body()
+    body: {
+      cfop: string;
+      contaCredito?: string | null;
+      contaDebito?: string | null;
+      contabiliza?: boolean;
+      retido?: boolean;
+      contaInss?: string | null;
+      contaIssqn?: string | null;
+      contaIrpj?: string | null;
+      contaCsll?: string | null;
+      contaIrrf?: string | null;
+      contaPis?: string | null;
+      contaCofins?: string | null;
+    },
   ) {
     return this.planoService.atualizarItem(
       id,
       body.cfop,
-      body.contaCredito,
-      body.contaDebito,
+      body.contaCredito || null,
+      body.contaDebito || null,
+      body.contabiliza ?? true,
+      body.retido ?? false,
+      body.contaInss || null,
+      body.contaIssqn || null,
+      body.contaIrpj || null,
+      body.contaCsll || null,
+      body.contaIrrf || null,
+      body.contaPis || null,
+      body.contaCofins || null,
     );
   }
 

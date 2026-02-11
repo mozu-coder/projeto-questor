@@ -19,7 +19,8 @@ const ObisidianResultCard: React.FC<Props> = ({
 }) => {
   const configs = {
     success: {
-      icon: <CheckCircle sx={{ fontSize: 32, color: "#10b981" }} />,
+      // Reduzi o tamanho do ícone de 26 para 20
+      icon: <CheckCircle sx={{ fontSize: 20, color: "#10b981" }} />,
       borderColor: "#10b981",
       bgcolor: "#f0fdf4",
       titleColor: "#065f46",
@@ -27,7 +28,7 @@ const ObisidianResultCard: React.FC<Props> = ({
       errorColor: "#10b981",
     },
     error: {
-      icon: <Error sx={{ fontSize: 32, color: "#ef4444" }} />,
+      icon: <Error sx={{ fontSize: 20, color: "#ef4444" }} />,
       borderColor: "#ef4444",
       bgcolor: "#fef2f2",
       titleColor: "#991b1b",
@@ -35,7 +36,7 @@ const ObisidianResultCard: React.FC<Props> = ({
       errorColor: "#dc2626",
     },
     warning: {
-      icon: <Warning sx={{ fontSize: 32, color: "#f59e0b" }} />,
+      icon: <Warning sx={{ fontSize: 20, color: "#f59e0b" }} />,
       borderColor: "#f59e0b",
       bgcolor: "#fffbeb",
       titleColor: "#92400e",
@@ -52,13 +53,13 @@ const ObisidianResultCard: React.FC<Props> = ({
       onClick={onClick}
       className={`status-card-${status}`}
       sx={{
-        p: 2,
+        p: 1.5, // Reduzi o padding de 2 para 1.5
         borderRadius: "8px",
-        border: `2px solid ${config.borderColor}`,
+        border: `1px solid ${config.borderColor}`, // Borda mais fina (opcional, de 2px para 1px)
         bgcolor: config.bgcolor,
         transition: "all 0.2s ease",
         cursor: onClick ? "pointer" : "default",
-        minHeight: "140px",
+        minHeight: "100px", // Reduzi a altura mínima de 140px para 100px
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -75,11 +76,11 @@ const ObisidianResultCard: React.FC<Props> = ({
 
       <Typography
         sx={{
-          fontSize: "0.95rem",
+          fontSize: "0.85rem", // Leve redução na fonte do título
           fontWeight: 600,
           color: config.titleColor,
-          mt: 1,
-          mb: 0.5,
+          mt: 0.5, // Menos margem superior
+          mb: 0.2, // Menos margem inferior
         }}
       >
         {title}
@@ -100,7 +101,7 @@ const ObisidianResultCard: React.FC<Props> = ({
           sx={{
             fontSize: "0.7rem",
             color: config.errorColor,
-            mt: 0.5,
+            mt: 0.2,
             fontWeight: 600,
           }}
         >

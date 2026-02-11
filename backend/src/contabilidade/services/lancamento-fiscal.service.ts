@@ -59,7 +59,7 @@ export class LancamentoFiscalService {
     const todosLancamentos: ILancamentoFiscal[] = [
       ...entradas.map((e) => ({
         CODIGOEMPRESA: e.CODIGOEMPRESA,
-        CHAVE: e.CHAVELCTOFISENT,
+        CHAVELCTOFISENT: e.CHAVELCTOFISENT,
         CODIGOESTAB: e.CODIGOESTAB,
         NUMERONF: e.NUMERONF,
         ESPECIENF: e.ESPECIENF,
@@ -67,10 +67,11 @@ export class LancamentoFiscalService {
         VALORCONTABIL: e.VALORCONTABIL,
         ORIGEMDADO: e.ORIGEMDADO,
         TIPO: 'ENTRADA' as const,
+        cfops: e.cfops,
       })),
       ...saidas.map((s) => ({
         CODIGOEMPRESA: s.CODIGOEMPRESA,
-        CHAVE: s.CHAVELCTOFISSAI,
+        CHAVELCTOFISSAI: s.CHAVELCTOFISSAI,
         CODIGOESTAB: s.CODIGOESTAB,
         NUMERONF: s.NUMERONF,
         ESPECIENF: s.ESPECIENF,
@@ -78,6 +79,7 @@ export class LancamentoFiscalService {
         VALORCONTABIL: s.VALORCONTABIL,
         ORIGEMDADO: s.ORIGEMDADO,
         TIPO: 'SAIDA' as const,
+        cfops: s.cfops,
       })),
     ];
 

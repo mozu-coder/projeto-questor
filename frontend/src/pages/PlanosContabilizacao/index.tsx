@@ -45,6 +45,15 @@ const PlanosContabilizacao = () => {
   const [formContaDebito, setFormContaDebito] = useState("");
   const [formContabiliza, setFormContabiliza] = useState(true);
 
+  const [formRetido, setFormRetido] = useState(false);
+  const [formContaInss, setFormContaInss] = useState("");
+  const [formContaIssqn, setFormContaIssqn] = useState("");
+  const [formContaIrpj, setFormContaIrpj] = useState("");
+  const [formContaCsll, setFormContaCsll] = useState("");
+  const [formContaIrrf, setFormContaIrrf] = useState("");
+  const [formContaPis, setFormContaPis] = useState("");
+  const [formContaCofins, setFormContaCofins] = useState("");
+
   const [deleteModal, setDeleteModal] = useState<{
     type: "plano" | "item";
     target: any;
@@ -202,6 +211,14 @@ const PlanosContabilizacao = () => {
     setFormContaCredito("");
     setFormContaDebito("");
     setFormContabiliza(true);
+    setFormRetido(false);
+    setFormContaInss("");
+    setFormContaIssqn("");
+    setFormContaIrpj("");
+    setFormContaCsll("");
+    setFormContaIrrf("");
+    setFormContaPis("");
+    setFormContaCofins("");
     setModalItemOpen(true);
   };
 
@@ -214,6 +231,14 @@ const PlanosContabilizacao = () => {
     setFormContaCredito(item.conta_credito || "");
     setFormContaDebito(item.conta_debito || "");
     setFormContabiliza(item.contabiliza);
+    setFormRetido(item.retido);
+    setFormContaInss(item.conta_inss || "");
+    setFormContaIssqn(item.conta_issqn || "");
+    setFormContaIrpj(item.conta_irpj || "");
+    setFormContaCsll(item.conta_csll || "");
+    setFormContaIrrf(item.conta_irrf || "");
+    setFormContaPis(item.conta_pis || "");
+    setFormContaCofins(item.conta_cofins || "");
     setModalItemOpen(true);
   };
 
@@ -239,6 +264,23 @@ const PlanosContabilizacao = () => {
       return;
     }
 
+    if (
+      formRetido &&
+      !formContaInss &&
+      !formContaIssqn &&
+      !formContaIrpj &&
+      !formContaCsll &&
+      !formContaIrrf &&
+      !formContaPis &&
+      !formContaCofins
+    ) {
+      showToast(
+        "Quando há retenção, ao menos uma conta de imposto deve ser preenchida",
+        "warning",
+      );
+      return;
+    }
+
     setLoading(true);
     try {
       const payload = {
@@ -246,6 +288,14 @@ const PlanosContabilizacao = () => {
         contaCredito: formContabiliza ? formContaCredito || null : null,
         contaDebito: formContabiliza ? formContaDebito || null : null,
         contabiliza: formContabiliza,
+        retido: formRetido,
+        contaInss: formRetido ? formContaInss || null : null,
+        contaIssqn: formRetido ? formContaIssqn || null : null,
+        contaIrpj: formRetido ? formContaIrpj || null : null,
+        contaCsll: formRetido ? formContaCsll || null : null,
+        contaIrrf: formRetido ? formContaIrrf || null : null,
+        contaPis: formRetido ? formContaPis || null : null,
+        contaCofins: formRetido ? formContaCofins || null : null,
       };
 
       if (editingItem) {
@@ -506,6 +556,12 @@ const PlanosContabilizacao = () => {
                           minWidth: 100,
                           format: (v: any) => (v ? "Sim" : "Não"),
                         },
+                        {
+                          id: "retido",
+                          label: "Retenção",
+                          minWidth: 100,
+                          format: (v: any) => (v ? "Sim" : "Não"),
+                        },
                       ]}
                       rows={itens}
                       onEdit={(row) => handleEditItem(row)}
@@ -648,6 +704,125 @@ const PlanosContabilizacao = () => {
               sx={{
                 "& .MuiInputBase-root": {
                   opacity: formContabiliza ? 1 : 0.5,
+                },
+              }}
+            />
+          </Grid>
+
+          <Grid size={12}>
+            <ObisidianSwitch
+              label="Possui retenção de impostos?"
+              checked={formRetido}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setFormRetido(checked);
+                if (!checked) {
+                  setFormContaInss("");
+                  setFormContaIssqn("");
+                  setFormContaIrpj("");
+                  setFormContaCsll("");
+                  setFormContaIrrf("");
+                  setFormContaPis("");
+                  setFormContaCofins("");
+                }
+              }}
+            />
+          </Grid>
+
+          <Grid size={6}>
+            <ObisidianInput
+              label="Conta INSS"
+              placeholder="Ex: 21010"
+              value={formContaInss}
+              onChange={(e) => setFormContaInss(e.target.value)}
+              disabled={!formRetido}
+              sx={{
+                "& .MuiInputBase-root": {
+                  opacity: formRetido ? 1 : 0.5,
+                },
+              }}
+            />
+          </Grid>
+          <Grid size={6}>
+            <ObisidianInput
+              label="Conta ISSQN"
+              placeholder="Ex: 21020"
+              value={formContaIssqn}
+              onChange={(e) => setFormContaIssqn(e.target.value)}
+              disabled={!formRetido}
+              sx={{
+                "& .MuiInputBase-root": {
+                  opacity: formRetido ? 1 : 0.5,
+                },
+              }}
+            />
+          </Grid>
+          <Grid size={6}>
+            <ObisidianInput
+              label="Conta IRPJ"
+              placeholder="Ex: 21030"
+              value={formContaIrpj}
+              onChange={(e) => setFormContaIrpj(e.target.value)}
+              disabled={!formRetido}
+              sx={{
+                "& .MuiInputBase-root": {
+                  opacity: formRetido ? 1 : 0.5,
+                },
+              }}
+            />
+          </Grid>
+          <Grid size={6}>
+            <ObisidianInput
+              label="Conta CSLL"
+              placeholder="Ex: 21040"
+              value={formContaCsll}
+              onChange={(e) => setFormContaCsll(e.target.value)}
+              disabled={!formRetido}
+              sx={{
+                "& .MuiInputBase-root": {
+                  opacity: formRetido ? 1 : 0.5,
+                },
+              }}
+            />
+          </Grid>
+          <Grid size={6}>
+            <ObisidianInput
+              label="Conta IRRF"
+              placeholder="Ex: 21050"
+              value={formContaIrrf}
+              onChange={(e) => setFormContaIrrf(e.target.value)}
+              disabled={!formRetido}
+              sx={{
+                "& .MuiInputBase-root": {
+                  opacity: formRetido ? 1 : 0.5,
+                },
+              }}
+            />
+          </Grid>
+          <Grid size={6}>
+            <ObisidianInput
+              label="Conta PIS"
+              placeholder="Ex: 21060"
+              value={formContaPis}
+              onChange={(e) => setFormContaPis(e.target.value)}
+              disabled={!formRetido}
+              sx={{
+                "& .MuiInputBase-root": {
+                  opacity: formRetido ? 1 : 0.5,
+                },
+              }}
+            />
+          </Grid>
+          <Grid size={6}>
+            <ObisidianInput
+              label="Conta COFINS"
+              placeholder="Ex: 21070"
+              value={formContaCofins}
+              onChange={(e) => setFormContaCofins(e.target.value)}
+              disabled={!formRetido}
+              sx={{
+                "& .MuiInputBase-root": {
+                  opacity: formRetido ? 1 : 0.5,
                 },
               }}
             />

@@ -27,7 +27,7 @@ const Sidebar = () => {
   const location = useLocation();
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const openFiscalMenu = Boolean(anchorEl);
+  const openConferenciaFiscalMenu = Boolean(anchorEl);
 
   const handleFiscalClick = (event: React.MouseEvent<HTMLElement>) =>
     setAnchorEl(event.currentTarget);
@@ -37,7 +37,7 @@ const Sidebar = () => {
     handleFiscalClose();
   };
 
-  const isFiscalActive =
+  const isConferenciaFiscalActive =
     location.pathname.includes("/conferencia-fiscal") ||
     location.pathname.includes("/planos-contabilizacao");
 
@@ -109,10 +109,10 @@ const Sidebar = () => {
         </ListItem>
 
         <ListItem disablePadding sx={{ mb: 0.5 }}>
-          <Tooltip title="Fiscal" placement="right" arrow>
+          <Tooltip title="Conferência Fiscal" placement="right" arrow>
             <ListItemButton
               onClick={handleFiscalClick}
-              sx={btnSx(isFiscalActive || openFiscalMenu)}
+              sx={btnSx(isConferenciaFiscalActive || openConferenciaFiscalMenu)}
             >
               <ListItemIcon sx={{ minWidth: 0, color: "inherit" }}>
                 <Calculate sx={{ fontSize: 18 }} />
@@ -148,7 +148,7 @@ const Sidebar = () => {
 
       <Menu
         anchorEl={anchorEl}
-        open={openFiscalMenu}
+        open={openConferenciaFiscalMenu}
         onClose={handleFiscalClose}
         onClick={handleFiscalClose}
         slotProps={{
@@ -198,7 +198,7 @@ const Sidebar = () => {
               letterSpacing: 0.5,
             }}
           >
-            Módulo Fiscal
+            Conferência Fiscal
           </Typography>
         </Box>
 

@@ -1,18 +1,19 @@
 export interface IDivergenciaConferencia {
   tipo:
-    | 'CONTA_INCORRETA'
-    | 'VALOR_DIVERGENTE'
     | 'NAO_ENCONTRADO_CONTABIL'
-    | 'NAO_ENCONTRADO_FISCAL';
+    | 'NAO_ENCONTRADO_FISCAL'
+    | 'VALOR_DIVERGENTE'
+    | 'CONTA_INCORRETA'
+    | 'CFOP_NAO_CONFIGURADO';
   numeroNf: number;
   tipoLancamento: 'ENTRADA' | 'SAIDA';
-  cfop?: string;
-  chaveFiscal?: number;
-  valorFiscal?: number;
+  cfop: number;
+  chaveFiscal: number;
+  valorFiscal: number;
   chaveContabil?: number;
   valorContabil?: number;
-  contaDebito?: number;
-  contaCredito?: number;
+  contaDebito?: number | null;
+  contaCredito?: number | null;
   contaDebitoEsperada?: number;
   contaCreditoEsperada?: number;
   descricao: string;
@@ -21,19 +22,22 @@ export interface IDivergenciaConferencia {
 export interface INotaConferida {
   numeroNf: number;
   tipoLancamento: 'ENTRADA' | 'SAIDA';
+  cfop: number;
   chaveFiscal: number;
-  chaveContabil: number;
+  chaveContabil: number | null;
   valorFiscal: number;
   valorContabil: number;
-  contaDebito: number;
-  contaCredito: number;
+  contaDebito: number | null;
+  contaCredito: number | null;
 }
 
 export interface IResultadoConferencia {
   totalEntradas: number;
   totalSaidas: number;
-  entradasConferidas: number;
-  saidasConferidas: number;
+  totalCFOPsEntrada: number;
+  totalCFOPsSaida: number;
+  cfopsEntradasConferidos: number;
+  cfopsSaidasConferidos: number;
   divergenciasEncontradas: number;
   divergencias: IDivergenciaConferencia[];
   notasCorretas: INotaConferida[];

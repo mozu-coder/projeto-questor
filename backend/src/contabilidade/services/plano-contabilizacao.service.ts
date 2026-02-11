@@ -56,24 +56,65 @@ export class PlanoContabilizacaoService {
   async criarItem(
     planoId: number,
     cfop: string,
-    contaCredito: string,
-    contaDebito: string,
+    contaCredito: string | null,
+    contaDebito: string | null,
+    contabiliza: boolean,
+    retido: boolean,
+    contaInss: string | null,
+    contaIssqn: string | null,
+    contaIrpj: string | null,
+    contaCsll: string | null,
+    contaIrrf: string | null,
+    contaPis: string | null,
+    contaCofins: string | null,
   ): Promise<IPlanoItem> {
     await this.buscarPlano(planoId);
-    return this.planoRepo.createItem(planoId, cfop, contaCredito, contaDebito);
+    return this.planoRepo.createItem(
+      planoId,
+      cfop,
+      contaCredito,
+      contaDebito,
+      contabiliza,
+      retido,
+      contaInss,
+      contaIssqn,
+      contaIrpj,
+      contaCsll,
+      contaIrrf,
+      contaPis,
+      contaCofins,
+    );
   }
 
   async atualizarItem(
     id: number,
     cfop: string,
-    contaCredito: string,
-    contaDebito: string,
+    contaCredito: string | null,
+    contaDebito: string | null,
+    contabiliza: boolean,
+    retido: boolean,
+    contaInss: string | null,
+    contaIssqn: string | null,
+    contaIrpj: string | null,
+    contaCsll: string | null,
+    contaIrrf: string | null,
+    contaPis: string | null,
+    contaCofins: string | null,
   ): Promise<IPlanoItem> {
     const item = await this.planoRepo.updateItem(
       id,
       cfop,
       contaCredito,
       contaDebito,
+      contabiliza,
+      retido,
+      contaInss,
+      contaIssqn,
+      contaIrpj,
+      contaCsll,
+      contaIrrf,
+      contaPis,
+      contaCofins,
     );
     if (!item) throw new NotFoundException(`Item ${id} não encontrado`);
     return item;

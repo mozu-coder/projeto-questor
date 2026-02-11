@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PlanoContasRepository } from '../repositories/plano-contas.repository';
 import {
   IPlanoContas,
@@ -10,231 +10,137 @@ import {
 export class PlanoContasService {
   constructor(private readonly planoContasRepo: PlanoContasRepository) {}
 
-  async listarPlanoContas(codigoEmpresa: number): Promise<IPlanoContas[]> {
-    return this.planoContasRepo.findByEmpresa(codigoEmpresa);
-  }
+  /**
+   * Constrói a árvore hierárquica do plano de contas baseada na classificação (string).
+   *
+   * Lógica "Ancestral Mais Próximo":
+   * O sistema tenta encontrar o pai exato. Se não existir, sobe um nível na string
+   * até encontrar um nó existente ou chegar na raiz.
+   *
+   * Representação Visual da Lógica:
+   * ---------------------------------------------------------
+   * Nível 1:  1 (Ativo)
+   * └── Nível 2: 1.1 (Circulante)
+   * ├── Nível 3: 1.1.001 (Caixa Geral - ID 50)
+   * │            └── Nível 4: 1.1.001.001 (Caixa Filial - ID 60)
+   * │            NOTE: O Pai de 1.1.001.001 é o 1.1.001.
+   * │
+   * └── Caso de "Pai Ausente" (Salto de Nível):
+   * Se o 1.1.002 não existisse, mas existisse 1.1.002.01:
+   * 1.1.002.01 buscaria 1.1.002 -> falha -> busca 1.1 -> Sucesso.
+   * Ele se tornaria filho direto de 1.1.
+   * ---------------------------------------------------------
+   */
+  async montarArvore(codigoEmpresa: number): Promise<IPlanoContasTree> {
+    const contas = await this.planoContasRepo.findByEmpresa(codigoEmpresa);
 
-  async buscarConta(
-    codigoEmpresa: number,
-    conta: number, // ← MUDOU: agora é number
-  ): Promise<IPlanoContas> {
-    const plano = await this.planoContasRepo.findByConta(codigoEmpresa, conta);
-    if (!plano) {
-      throw new NotFoundException(
-        `Conta ${conta} não encontrada na empresa ${codigoEmpresa}`,
-      );
-    }
-    return plano;
-  }
+    const mapaClassif = new Map<string, IPlanoContasNode>();
+    const mapaId = new Map<number, IPlanoContasNode>();
+    const raizes: IPlanoContasNode[] = [];
+    const todosNos: IPlanoContasNode[] = [];
 
-  async contaExiste(codigoEmpresa: number, conta: number): Promise<boolean> {
-    const plano = await this.planoContasRepo.findByConta(codigoEmpresa, conta);
-    return plano !== null;
-  }
-
-  async listarPorClassificacao(
-    codigoEmpresa: number,
-    classificacao: string,
-  ): Promise<IPlanoContas[]> {
-    return this.planoContasRepo.findByClassificacao(
-      codigoEmpresa,
-      classificacao,
-    );
-  }
-
-  async buscarPorDescricao(
-    codigoEmpresa: number,
-    descricao: string,
-  ): Promise<IPlanoContas[]> {
-    return this.planoContasRepo.buscarContaPorDescricao(
-      codigoEmpresa,
-      descricao,
-    );
-  }
-
-  async validarContas(
-    codigoEmpresa: number,
-    contas: number[], // ← MUDOU: agora é number[]
-  ): Promise<{ validas: number[]; invalidas: number[] }> {
-    const validas: number[] = [];
-    const invalidas: number[] = [];
+    contas.sort((a, b) => a.CLASSIFCONTA.localeCompare(b.CLASSIFCONTA));
 
     for (const conta of contas) {
-      const existe = await this.contaExiste(codigoEmpresa, conta);
-      if (existe) {
-        validas.push(conta);
-      } else {
-        invalidas.push(conta);
-      }
-    }
+      const classifLimpa = conta.CLASSIFCONTA ? conta.CLASSIFCONTA.trim() : '';
 
-    return { validas, invalidas };
-  }
-
-  async criarMapaContas(
-    codigoEmpresa: number,
-  ): Promise<Map<number, IPlanoContas>> {
-    // ← MUDOU: Map<number, ...>
-    const contas = await this.planoContasRepo.findByEmpresa(codigoEmpresa);
-    const mapa = new Map<number, IPlanoContas>();
-
-    contas.forEach((conta) => {
-      mapa.set(conta.CONTACTB, conta);
-    });
-
-    return mapa;
-  }
-
-  private calcularNivel(classificacao: string): number {
-    return classificacao.split('.').length;
-  }
-
-  private encontrarPaiDireto(classificacao: string): string | null {
-    const partes = classificacao.split('.');
-    if (partes.length === 1) return null;
-    partes.pop();
-    return partes.join('.');
-  }
-
-  private encontrarPaiExistente(
-    classificacao: string,
-    mapaClassif: Map<string, IPlanoContasNode>, // ← Usa mapaClassif
-  ): string | null {
-    let paiCanditado = this.encontrarPaiDireto(classificacao);
-
-    while (paiCanditado) {
-      if (mapaClassif.has(paiCanditado)) {
-        return paiCanditado;
-      }
-      paiCanditado = this.encontrarPaiDireto(paiCanditado);
-    }
-
-    return null;
-  }
-
-  async construirArvore(codigoEmpresa: number): Promise<IPlanoContasTree> {
-    const contas = await this.planoContasRepo.findByEmpresa(codigoEmpresa);
-
-    // ← MUDOU: Agora temos dois mapas
-    const mapa = new Map<number, IPlanoContasNode>();
-    const mapaClassif = new Map<string, IPlanoContasNode>();
-
-    // Primeira passagem: cria todos os nodes
-    contas.forEach((conta) => {
       const node: IPlanoContasNode = {
         ...conta,
-        nivel: this.calcularNivel(conta.CLASSIFCONTA),
+        CLASSIFCONTA: classifLimpa,
+        nivel: classifLimpa.split('.').length,
         filhos: [],
         valor: 0,
         valorTotal: 0,
       };
-      mapa.set(conta.CONTACTB, node); // Por número
-      mapaClassif.set(conta.CLASSIFCONTA, node); // Por classificação
-    });
 
-    // Segunda passagem: estabelece relações pai-filho
-    const raizes: IPlanoContasNode[] = [];
+      todosNos.push(node);
+      mapaId.set(node.CONTACTB, node);
 
-    mapaClassif.forEach((node) => {
-      const paiClassif = this.encontrarPaiExistente(
-        node.CLASSIFCONTA,
-        mapaClassif,
-      );
+      if (classifLimpa) {
+        mapaClassif.set(classifLimpa, node);
+      }
+    }
 
-      if (paiClassif) {
-        node.pai = paiClassif;
-        const nodePai = mapaClassif.get(paiClassif);
-        if (nodePai) {
-          nodePai.filhos.push(node);
+    for (const node of todosNos) {
+      const classifAtual = node.CLASSIFCONTA;
+
+      if (!classifAtual) {
+        raizes.push(node);
+        continue;
+      }
+
+      let paiEncontrado: IPlanoContasNode | undefined = undefined;
+      let classifBusca = classifAtual;
+
+      while (classifBusca.includes('.')) {
+        const lastDotIndex = classifBusca.lastIndexOf('.');
+        classifBusca = classifBusca.substring(0, lastDotIndex);
+
+        const paiCandidato = mapaClassif.get(classifBusca);
+
+        if (paiCandidato && paiCandidato.CONTACTB !== node.CONTACTB) {
+          paiEncontrado = paiCandidato;
+          break;
         }
+      }
+
+      if (paiEncontrado) {
+        node.pai = paiEncontrado.CLASSIFCONTA;
+        paiEncontrado.filhos.push(node);
       } else {
         raizes.push(node);
       }
-    });
-
-    raizes.sort((a, b) => a.CLASSIFCONTA.localeCompare(b.CLASSIFCONTA));
-    mapaClassif.forEach((node) => {
-      node.filhos.sort((a, b) => a.CLASSIFCONTA.localeCompare(b.CLASSIFCONTA));
-    });
-
-    return { raizes, mapa, mapaClassif }; // ← MUDOU: retorna ambos os mapas
-  }
-
-  private calcularValorTotal(
-    node: IPlanoContasNode,
-    valoresPorConta: Map<number, number>, // ← MUDOU: Map<number, number>
-  ): number {
-    const valorProprio = valoresPorConta.get(node.CONTACTB) || 0;
-    node.valor = valorProprio;
-
-    let somaFilhos = 0;
-    for (const filho of node.filhos) {
-      somaFilhos += this.calcularValorTotal(filho, valoresPorConta);
     }
 
-    node.valorTotal = valorProprio + somaFilhos;
-    return node.valorTotal;
-  }
-
-  async construirArvoreComValores(
-    codigoEmpresa: number,
-    valoresPorConta: Map<number, number>, // ← MUDOU: Map<number, number>
-  ): Promise<IPlanoContasTree> {
-    const arvore = await this.construirArvore(codigoEmpresa);
-
-    arvore.raizes.forEach((raiz) => {
-      this.calcularValorTotal(raiz, valoresPorConta);
-    });
-
-    return arvore;
-  }
-
-  obterCaminhoPais(classificacao: string, arvore: IPlanoContasTree): string[] {
-    const pais: string[] = [];
-    let atual = classificacao;
-
-    while (true) {
-      const paiClassif = this.encontrarPaiExistente(atual, arvore.mapaClassif);
-      if (!paiClassif) break;
-      pais.push(paiClassif);
-      atual = paiClassif;
-    }
-
-    return pais;
-  }
-
-  obterTodosFilhos(node: IPlanoContasNode): IPlanoContasNode[] {
-    const filhos: IPlanoContasNode[] = [];
-
-    const coletar = (n: IPlanoContasNode) => {
-      n.filhos.forEach((filho) => {
-        filhos.push(filho);
-        coletar(filho);
-      });
+    return {
+      raizes,
+      mapa: mapaId,
+      mapaClassif,
     };
-
-    coletar(node);
-    return filhos;
   }
 
-  ehPaiDe(paiClassif: string, filhoClassif: string): boolean {
-    if (paiClassif === filhoClassif) return false;
-    return filhoClassif.startsWith(paiClassif + '.');
+  /**
+   * Retorna a lista plana de todas as contas da empresa sem hierarquia processada.
+   */
+  async listarPlanoContas(codigoEmpresa: number): Promise<IPlanoContas[]> {
+    return this.planoContasRepo.findByEmpresa(codigoEmpresa);
   }
 
-  // ← NOVO: Busca por número de conta
-  buscarPorConta(
-    conta: number,
-    arvore: IPlanoContasTree,
-  ): IPlanoContasNode | null {
-    return arvore.mapa.get(conta) || null;
+  /**
+   * Cria um mapa otimizado para conferências fiscais.
+   * Chave: CONTACTB (ID único numérico)
+   * Valor: CLASSIFCONTA (String hierárquica limpa)
+   */
+  async carregarMapaClassificacoes(
+    codigoEmpresa: number,
+  ): Promise<Map<number, string>> {
+    const contas = await this.planoContasRepo.findByEmpresa(codigoEmpresa);
+    const mapa = new Map<number, string>();
+
+    for (const conta of contas) {
+      if (conta.CLASSIFCONTA) {
+        mapa.set(Number(conta.CONTACTB), conta.CLASSIFCONTA.trim());
+      }
+    }
+    return mapa;
   }
 
-  // ← NOVO: Busca por classificação
-  buscarPorClassificacao(
-    classificacao: string,
-    arvore: IPlanoContasTree,
-  ): IPlanoContasNode | null {
-    return arvore.mapaClassif.get(classificacao) || null;
+  /**
+   * Verifica se uma conta é filha ou descendente de outra baseada na string de classificação.
+   * Utilizado para validar regras de contabilização (Ex: Se lançou na conta filha de 'Caixa').
+   */
+  verificarHierarquia(
+    contaFilhaId: number,
+    contaPaiId: number,
+    mapaClassificacoes: Map<number, string>,
+  ): boolean {
+    if (contaFilhaId === contaPaiId) return true;
+
+    const classifFilha = mapaClassificacoes.get(contaFilhaId);
+    const classifPai = mapaClassificacoes.get(contaPaiId);
+
+    if (!classifFilha || !classifPai) return false;
+
+    return classifFilha.startsWith(classifPai);
   }
 }
