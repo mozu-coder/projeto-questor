@@ -78,6 +78,13 @@ const PlanosContabilizacao = () => {
     carregarPlanos();
   }, []);
 
+  useEffect(() => {
+    document.title = "Obisidian | Planos Contabilização";
+    return () => {
+      document.title = "Obisidian";
+    };
+  }, []);
+
   /**
    * Busca a lista de planos na API
    */
@@ -539,14 +546,14 @@ const PlanosContabilizacao = () => {
                       columns={[
                         { id: "cfop", label: "CFOP", minWidth: 80 },
                         {
-                          id: "conta_credito",
-                          label: "Conta Crédito",
+                          id: "conta_debito",
+                          label: "Conta Débito",
                           minWidth: 140,
                           format: (v: string) => v || "—",
                         },
                         {
-                          id: "conta_debito",
-                          label: "Conta Débito",
+                          id: "conta_credito",
+                          label: "Conta Crédito",
                           minWidth: 140,
                           format: (v: string) => v || "—",
                         },

@@ -119,6 +119,13 @@ const ConferenciaFiscal = () => {
     carregarPlanos();
   }, []);
 
+  useEffect(() => {
+    document.title = "Obisidian | Conferência Fiscal";
+    return () => {
+      document.title = "Obisidian";
+    };
+  }, []);
+
   const formatarData = (valor: string) => {
     const v = valor.replace(/\D/g, "");
     if (v.length > 4)

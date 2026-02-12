@@ -20,6 +20,9 @@ import {
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 
+// IMPORTAÇÃO DA IMAGEM
+import logoObisidian from "../../assets/obisidian-logo.png";
+
 const SIDEBAR_W = 48;
 
 const Sidebar = () => {
@@ -70,28 +73,22 @@ const Sidebar = () => {
         },
       }}
     >
-      <Box sx={{ py: 1.2 }}>
+      <Box sx={{ py: 1.5 }}>
+        {/* LOGO IMAGEM AQUI */}
         <Box
+          component="img"
+          src={logoObisidian}
+          alt="Obisidian"
           sx={{
-            width: 30,
-            height: 30,
-            background: "linear-gradient(135deg, #6366f1 0%, #a855f7 100%)",
-            borderRadius: "8px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontWeight: "bold",
-            fontSize: "15px",
-            color: "#fff",
-            boxShadow: "0 3px 10px rgba(99, 102, 241, 0.4)",
+            width: 32, // Ajuste o tamanho conforme necessário
+            height: 32,
             cursor: "pointer",
             transition: "transform 0.2s",
-            "&:hover": { transform: "scale(1.05)" },
+            objectFit: "contain",
+            "&:hover": { transform: "scale(1.1)" },
           }}
           onClick={() => navigate("/")}
-        >
-          Q
-        </Box>
+        />
       </Box>
 
       <List sx={{ width: "100%", px: 0.7, pt: 0.5 }}>
